@@ -424,8 +424,10 @@ export function AirshipGame() {
     // Mid mountains
     drawMountains(ctx, vw, vh, camX * 0.5, "#2a1f33", vh * 0.88);
 
-    // World transform
+    // World transform (with zoom for small screens)
+    const zoom = Math.min(1, Math.max(0.45, vw / 1100));
     ctx.save();
+    ctx.scale(zoom, zoom);
     ctx.translate(-camX, -camY);
 
     // Ships
