@@ -157,33 +157,75 @@ export function AirshipGame() {
 
   function explode(x: number, y: number, big = false) {
     const s = stateRef.current!;
-    s.shake = Math.min(s.shake + (big ? 18 : 6), 30);
-    const n = big ? 60 : 20;
+    s.shake = Math.min(s.shake + (big ? 28 : 7), 40);
+    // shockwave ring
+    s.particles.push({
+      pos: { x, y }, vel: { x: 0, y: 0 },
+      life: big ? 0.5 : 0.3, maxLife: big ? 0.5 : 0.3,
+      color: "#ffe9b0", size: big ? 14 : 6, kind: "ring",
+    });
+    if (big) {
+      // bright white flash
+      s.particles.push({
+        pos: { x, y }, vel: { x: 0, y: 0 },
+        life: 0.18, maxLife: 0.18,
+        color: "#ffffff", size: 220, kind: "fire",
+      });
+    }
+    const n = big ? 110 : 28;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 60 + Math.random() * (big ? 350 : 180);
+      const sp = 80 + Math.random() * (big ? 520 : 220);
+      const palette = ["#fff2a8", "#ffcf3a", "#ff8a3d", "#ff4a1a", "#b32018"];
       s.particles.push({
         pos: { x, y },
         vel: { x: Math.cos(a) * sp, y: Math.sin(a) * sp },
-        life: 0.6 + Math.random() * 0.8,
-        maxLife: 1.2,
-        color: Math.random() < 0.5 ? "#ff8a3d" : "#ffd66b",
-        size: 4 + Math.random() * (big ? 14 : 8),
+        life: 0.5 + Math.random() * (big ? 1.2 : 0.6),
+        maxLife: big ? 1.4 : 0.9,
+        color: palette[(Math.random() * palette.length) | 0],
+        size: 5 + Math.random() * (big ? 18 : 9),
         kind: "fire",
       });
     }
-    for (let i = 0; i < (big ? 30 : 10); i++) {
+    // embers (long trailing sparks)
+    for (let i = 0; i < (big ? 40 : 12); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 150 + Math.random() * (big ? 450 : 250);
       s.particles.push({
-        pos: { x: x + (Math.random() - 0.5) * 30, y: y + (Math.random() - 0.5) * 30 },
-        vel: { x: (Math.random() - 0.5) * 40, y: -20 - Math.random() * 30 },
-        life: 1.5 + Math.random() * 1.5,
-        maxLife: 3,
-        color: "#5a4a44",
-        size: 10 + Math.random() * 20,
-        kind: "smoke",
+        pos: { x, y },
+        vel: { x: Math.cos(a) * sp, y: Math.sin(a) * sp - 40 },
+        life: 0.8 + Math.random() * 1.4, maxLife: 2,
+        color: Math.random() < 0.5 ? "#ffd66b" : "#ff6a2a",
+        size: 2 + Math.random() * 2, kind: "ember",
       });
     }
+    // chunky smoke
+    for (let i = 0; i < (big ? 50 : 12); i++) {
+      s.particles.push({
+        pos: { x: x + (Math.random() - 0.5) * 40, y: y + (Math.random() - 0.5) * 40 },
+        vel: { x: (Math.random() - 0.5) * 70, y: -30 - Math.random() * 60 },
+        life: 1.8 + Math.random() * 2, maxLife: 3.5,
+        color: Math.random() < 0.5 ? "#2a1f1c" : "#5a4a44",
+        size: 14 + Math.random() * 28, kind: "smoke",
+      });
+    }
+    // debris chunks for big explosions
+    if (big) {
+      for (let i = 0; i < 18; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 200 + Math.random() * 400;
+        s.particles.push({
+          pos: { x, y },
+          vel: { x: Math.cos(a) * sp, y: Math.sin(a) * sp - 120 },
+          life: 1.4 + Math.random() * 1.2, maxLife: 2.5,
+          color: ["#6e4a2a", "#3a2a1a", "#1a1a1e"][(Math.random() * 3) | 0],
+          size: 4 + Math.random() * 8, kind: "debris",
+          rot: Math.random() * Math.PI * 2, vrot: (Math.random() - 0.5) * 10,
+        });
+      }
+    }
   }
+
 
   function fireFromShip(ship: Ship, targetX: number, targetY: number) {
     const s = stateRef.current!;
