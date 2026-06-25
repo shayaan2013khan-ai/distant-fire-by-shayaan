@@ -119,16 +119,17 @@ export function AirshipGame() {
     const ctx = canvas.getContext("2d")!;
     let raf = 0;
     let last = performance.now();
+    let curDpr = 1;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      curDpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = wrapRef.current!.clientWidth;
       const h = wrapRef.current!.clientHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+      canvas.width = Math.round(w * curDpr);
+      canvas.height = Math.round(h * curDpr);
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(curDpr, 0, 0, curDpr, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -137,7 +138,7 @@ export function AirshipGame() {
       const dt = Math.min(0.033, (t - last) / 1000);
       last = t;
       tick(dt);
-      render(ctx, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+      render(ctx, canvas.width / curDpr, canvas.height / curDpr);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -145,6 +146,7 @@ export function AirshipGame() {
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   function spawnParticle(p: Particle) {
     stateRef.current!.particles.push(p);
