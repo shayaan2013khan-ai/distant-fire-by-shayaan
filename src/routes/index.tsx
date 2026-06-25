@@ -1,29 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AirshipGame } from "@/game/AirshipGame";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Skies of Aang — Airship Battle" },
+      { name: "description", content: "ATLA-inspired 2D hand-drawn airship combat. Joystick on mobile, WASD on desktop." },
+      { property: "og:title", content: "Skies of Aang — Airship Battle" },
+      { property: "og:description", content: "Pilot a Fire Nation airship through stormy skies and blast rival warships." },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+  return <AirshipGame />;
 }
