@@ -368,15 +368,18 @@ export function AirshipGame() {
       if (c.pos.x < -200) { c.pos.x = WORLD.w + 200; c.pos.y = Math.random() * WORLD.h; }
     }
 
-    // Camera
+    // Camera (with zoom so mobile sees more of the world)
     const vw = canvasRef.current!.clientWidth;
     const vh = canvasRef.current!.clientHeight;
-    const tx = p.pos.x - vw / 2;
-    const ty = p.pos.y - vh / 2;
+    const zoom = Math.min(1, Math.max(0.45, vw / 1100));
+    const evw = vw / zoom;
+    const evh = vh / zoom;
+    const tx = p.pos.x - evw / 2;
+    const ty = p.pos.y - evh / 2;
     s.camera.x += (tx - s.camera.x) * Math.min(1, dt * 4);
     s.camera.y += (ty - s.camera.y) * Math.min(1, dt * 4);
-    s.camera.x = Math.max(0, Math.min(WORLD.w - vw, s.camera.x));
-    s.camera.y = Math.max(0, Math.min(WORLD.h - vh, s.camera.y));
+    s.camera.x = Math.max(0, Math.min(WORLD.w - evw, s.camera.x));
+    s.camera.y = Math.max(0, Math.min(WORLD.h - evh, s.camera.y));
     s.shake *= Math.pow(0.001, dt);
   }
 
@@ -421,8 +424,10 @@ export function AirshipGame() {
     // Mid mountains
     drawMountains(ctx, vw, vh, camX * 0.5, "#2a1f33", vh * 0.88);
 
-    // World transform
+    // World transform (with zoom for small screens)
+    const zoom = Math.min(1, Math.max(0.45, vw / 1100));
     ctx.save();
+    ctx.scale(zoom, zoom);
     ctx.translate(-camX, -camY);
 
     // Ships
