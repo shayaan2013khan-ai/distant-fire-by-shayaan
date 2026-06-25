@@ -30,8 +30,11 @@ type Particle = {
   maxLife: number;
   color: string;
   size: number;
-  kind: "smoke" | "fire" | "spark" | "cloud";
+  kind: "smoke" | "fire" | "spark" | "cloud" | "ring" | "ember" | "debris";
+  rot?: number;
+  vrot?: number;
 };
+
 
 type Cloud = { pos: Vec; scale: number; speed: number; opacity: number };
 
