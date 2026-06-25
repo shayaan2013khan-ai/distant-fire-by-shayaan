@@ -402,12 +402,21 @@ export function AirshipGame() {
     for (const pa of s.particles) {
       pa.pos.x += pa.vel.x * dt;
       pa.pos.y += pa.vel.y * dt;
-      pa.vel.x *= Math.pow(0.5, dt);
-      if (pa.kind === "smoke") pa.vel.y -= 20 * dt;
+      if (pa.kind === "ring") {
+        pa.size += 600 * dt;
+      } else if (pa.kind === "debris" || pa.kind === "ember") {
+        pa.vel.x *= Math.pow(0.6, dt);
+        pa.vel.y += 300 * dt; // gravity
+        if (pa.vrot != null && pa.rot != null) pa.rot += pa.vrot * dt;
+      } else {
+        pa.vel.x *= Math.pow(0.5, dt);
+        if (pa.kind === "smoke") pa.vel.y -= 20 * dt;
+      }
       pa.life -= dt;
     }
     s.particles = s.particles.filter(pa => pa.life > 0);
-    if (s.particles.length > 600) s.particles.splice(0, s.particles.length - 600);
+    if (s.particles.length > 900) s.particles.splice(0, s.particles.length - 900);
+
 
     // Clouds drift
     for (const c of s.clouds) {
