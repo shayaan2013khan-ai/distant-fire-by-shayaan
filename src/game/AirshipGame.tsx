@@ -512,18 +512,44 @@ export function AirshipGame() {
       ctx.globalAlpha = a;
       if (pa.kind === "smoke") {
         ctx.fillStyle = pa.color;
-        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * (1.4 - a * 0.4), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * (1.6 - a * 0.5), 0, Math.PI * 2); ctx.fill();
       } else if (pa.kind === "fire") {
         ctx.fillStyle = pa.color;
-        ctx.shadowColor = pa.color; ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * a, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowColor = pa.color; ctx.shadowBlur = 24;
+        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * (0.4 + a * 0.8), 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
+      } else if (pa.kind === "ring") {
+        ctx.strokeStyle = pa.color;
+        ctx.lineWidth = pa.size * a + 1;
+        ctx.shadowColor = pa.color; ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(pa.pos.x, pa.pos.y, pa.size * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      } else if (pa.kind === "ember") {
+        ctx.fillStyle = pa.color;
+        ctx.shadowColor = pa.color; ctx.shadowBlur = 10;
+        const len = 6 + Math.hypot(pa.vel.x, pa.vel.y) * 0.02;
+        const ang = Math.atan2(pa.vel.y, pa.vel.x);
+        ctx.save();
+        ctx.translate(pa.pos.x, pa.pos.y); ctx.rotate(ang);
+        ctx.fillRect(-len, -pa.size / 2, len, pa.size);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+      } else if (pa.kind === "debris") {
+        ctx.save();
+        ctx.translate(pa.pos.x, pa.pos.y);
+        ctx.rotate(pa.rot || 0);
+        ctx.fillStyle = pa.color;
+        ctx.fillRect(-pa.size / 2, -pa.size / 2, pa.size, pa.size * 0.6);
+        ctx.restore();
       } else {
         ctx.fillStyle = pa.color;
         ctx.fillRect(pa.pos.x - 1, pa.pos.y - 1, 3, 3);
       }
     }
     ctx.globalAlpha = 1;
+
 
     ctx.restore();
 
