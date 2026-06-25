@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "DIstant Fire" },
+      { name: "description", content: "A epic game where you shoot down enemy airships, dont crash. and fear not, because freedom is near." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "DIstant Fire" },
+      { property: "og:description", content: "A epic game where you shoot down enemy airships, dont crash. and fear not, because freedom is near." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "DIstant Fire" },
+      { name: "twitter:description", content: "A epic game where you shoot down enemy airships, dont crash. and fear not, because freedom is near." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/60598212-e711-4852-a3ed-77c030164bfc/id-preview-4c10ef1c--86d1e717-94cc-4a87-a92c-48ff646de7d7.lovable.app-1782399693110.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/60598212-e711-4852-a3ed-77c030164bfc/id-preview-4c10ef1c--86d1e717-94cc-4a87-a92c-48ff646de7d7.lovable.app-1782399693110.png" },
     ],
     links: [
       {
