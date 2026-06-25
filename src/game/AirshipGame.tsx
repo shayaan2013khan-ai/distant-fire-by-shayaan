@@ -30,8 +30,11 @@ type Particle = {
   maxLife: number;
   color: string;
   size: number;
-  kind: "smoke" | "fire" | "spark" | "cloud";
+  kind: "smoke" | "fire" | "spark" | "cloud" | "ring" | "ember" | "debris";
+  rot?: number;
+  vrot?: number;
 };
+
 
 type Cloud = { pos: Vec; scale: number; speed: number; opacity: number };
 
@@ -119,16 +122,17 @@ export function AirshipGame() {
     const ctx = canvas.getContext("2d")!;
     let raf = 0;
     let last = performance.now();
+    let curDpr = 1;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      curDpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = wrapRef.current!.clientWidth;
       const h = wrapRef.current!.clientHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+      canvas.width = Math.round(w * curDpr);
+      canvas.height = Math.round(h * curDpr);
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(curDpr, 0, 0, curDpr, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -137,7 +141,7 @@ export function AirshipGame() {
       const dt = Math.min(0.033, (t - last) / 1000);
       last = t;
       tick(dt);
-      render(ctx, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+      render(ctx, canvas.width / curDpr, canvas.height / curDpr);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -146,39 +150,82 @@ export function AirshipGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
   function spawnParticle(p: Particle) {
     stateRef.current!.particles.push(p);
   }
 
   function explode(x: number, y: number, big = false) {
     const s = stateRef.current!;
-    s.shake = Math.min(s.shake + (big ? 18 : 6), 30);
-    const n = big ? 60 : 20;
+    s.shake = Math.min(s.shake + (big ? 28 : 7), 40);
+    // shockwave ring
+    s.particles.push({
+      pos: { x, y }, vel: { x: 0, y: 0 },
+      life: big ? 0.5 : 0.3, maxLife: big ? 0.5 : 0.3,
+      color: "#ffe9b0", size: big ? 14 : 6, kind: "ring",
+    });
+    if (big) {
+      // bright white flash
+      s.particles.push({
+        pos: { x, y }, vel: { x: 0, y: 0 },
+        life: 0.18, maxLife: 0.18,
+        color: "#ffffff", size: 220, kind: "fire",
+      });
+    }
+    const n = big ? 110 : 28;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
-      const sp = 60 + Math.random() * (big ? 350 : 180);
+      const sp = 80 + Math.random() * (big ? 520 : 220);
+      const palette = ["#fff2a8", "#ffcf3a", "#ff8a3d", "#ff4a1a", "#b32018"];
       s.particles.push({
         pos: { x, y },
         vel: { x: Math.cos(a) * sp, y: Math.sin(a) * sp },
-        life: 0.6 + Math.random() * 0.8,
-        maxLife: 1.2,
-        color: Math.random() < 0.5 ? "#ff8a3d" : "#ffd66b",
-        size: 4 + Math.random() * (big ? 14 : 8),
+        life: 0.5 + Math.random() * (big ? 1.2 : 0.6),
+        maxLife: big ? 1.4 : 0.9,
+        color: palette[(Math.random() * palette.length) | 0],
+        size: 5 + Math.random() * (big ? 18 : 9),
         kind: "fire",
       });
     }
-    for (let i = 0; i < (big ? 30 : 10); i++) {
+    // embers (long trailing sparks)
+    for (let i = 0; i < (big ? 40 : 12); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 150 + Math.random() * (big ? 450 : 250);
       s.particles.push({
-        pos: { x: x + (Math.random() - 0.5) * 30, y: y + (Math.random() - 0.5) * 30 },
-        vel: { x: (Math.random() - 0.5) * 40, y: -20 - Math.random() * 30 },
-        life: 1.5 + Math.random() * 1.5,
-        maxLife: 3,
-        color: "#5a4a44",
-        size: 10 + Math.random() * 20,
-        kind: "smoke",
+        pos: { x, y },
+        vel: { x: Math.cos(a) * sp, y: Math.sin(a) * sp - 40 },
+        life: 0.8 + Math.random() * 1.4, maxLife: 2,
+        color: Math.random() < 0.5 ? "#ffd66b" : "#ff6a2a",
+        size: 2 + Math.random() * 2, kind: "ember",
       });
     }
+    // chunky smoke
+    for (let i = 0; i < (big ? 50 : 12); i++) {
+      s.particles.push({
+        pos: { x: x + (Math.random() - 0.5) * 40, y: y + (Math.random() - 0.5) * 40 },
+        vel: { x: (Math.random() - 0.5) * 70, y: -30 - Math.random() * 60 },
+        life: 1.8 + Math.random() * 2, maxLife: 3.5,
+        color: Math.random() < 0.5 ? "#2a1f1c" : "#5a4a44",
+        size: 14 + Math.random() * 28, kind: "smoke",
+      });
+    }
+    // debris chunks for big explosions
+    if (big) {
+      for (let i = 0; i < 18; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 200 + Math.random() * 400;
+        s.particles.push({
+          pos: { x, y },
+          vel: { x: Math.cos(a) * sp, y: Math.sin(a) * sp - 120 },
+          life: 1.4 + Math.random() * 1.2, maxLife: 2.5,
+          color: ["#6e4a2a", "#3a2a1a", "#1a1a1e"][(Math.random() * 3) | 0],
+          size: 4 + Math.random() * 8, kind: "debris",
+          rot: Math.random() * Math.PI * 2, vrot: (Math.random() - 0.5) * 10,
+        });
+      }
+    }
   }
+
 
   function fireFromShip(ship: Ship, targetX: number, targetY: number) {
     const s = stateRef.current!;
@@ -355,12 +402,21 @@ export function AirshipGame() {
     for (const pa of s.particles) {
       pa.pos.x += pa.vel.x * dt;
       pa.pos.y += pa.vel.y * dt;
-      pa.vel.x *= Math.pow(0.5, dt);
-      if (pa.kind === "smoke") pa.vel.y -= 20 * dt;
+      if (pa.kind === "ring") {
+        pa.size += 600 * dt;
+      } else if (pa.kind === "debris" || pa.kind === "ember") {
+        pa.vel.x *= Math.pow(0.6, dt);
+        pa.vel.y += 300 * dt; // gravity
+        if (pa.vrot != null && pa.rot != null) pa.rot += pa.vrot * dt;
+      } else {
+        pa.vel.x *= Math.pow(0.5, dt);
+        if (pa.kind === "smoke") pa.vel.y -= 20 * dt;
+      }
       pa.life -= dt;
     }
     s.particles = s.particles.filter(pa => pa.life > 0);
-    if (s.particles.length > 600) s.particles.splice(0, s.particles.length - 600);
+    if (s.particles.length > 900) s.particles.splice(0, s.particles.length - 900);
+
 
     // Clouds drift
     for (const c of s.clouds) {
@@ -456,18 +512,44 @@ export function AirshipGame() {
       ctx.globalAlpha = a;
       if (pa.kind === "smoke") {
         ctx.fillStyle = pa.color;
-        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * (1.4 - a * 0.4), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * (1.6 - a * 0.5), 0, Math.PI * 2); ctx.fill();
       } else if (pa.kind === "fire") {
         ctx.fillStyle = pa.color;
-        ctx.shadowColor = pa.color; ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * a, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowColor = pa.color; ctx.shadowBlur = 24;
+        ctx.beginPath(); ctx.arc(pa.pos.x, pa.pos.y, pa.size * (0.4 + a * 0.8), 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
+      } else if (pa.kind === "ring") {
+        ctx.strokeStyle = pa.color;
+        ctx.lineWidth = pa.size * a + 1;
+        ctx.shadowColor = pa.color; ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(pa.pos.x, pa.pos.y, pa.size * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      } else if (pa.kind === "ember") {
+        ctx.fillStyle = pa.color;
+        ctx.shadowColor = pa.color; ctx.shadowBlur = 10;
+        const len = 6 + Math.hypot(pa.vel.x, pa.vel.y) * 0.02;
+        const ang = Math.atan2(pa.vel.y, pa.vel.x);
+        ctx.save();
+        ctx.translate(pa.pos.x, pa.pos.y); ctx.rotate(ang);
+        ctx.fillRect(-len, -pa.size / 2, len, pa.size);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+      } else if (pa.kind === "debris") {
+        ctx.save();
+        ctx.translate(pa.pos.x, pa.pos.y);
+        ctx.rotate(pa.rot || 0);
+        ctx.fillStyle = pa.color;
+        ctx.fillRect(-pa.size / 2, -pa.size / 2, pa.size, pa.size * 0.6);
+        ctx.restore();
       } else {
         ctx.fillStyle = pa.color;
         ctx.fillRect(pa.pos.x - 1, pa.pos.y - 1, 3, 3);
       }
     }
     ctx.globalAlpha = 1;
+
 
     ctx.restore();
 
@@ -532,108 +614,16 @@ export function AirshipGame() {
     const w = ship.width, h = ship.height;
 
     // shadow under
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.3;
     ctx.fillStyle = "#1a0a14";
     ctx.beginPath(); ctx.ellipse(0, h * 0.7, w * 0.45, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Balloon (envelope)
-    const balloonColor = enemy ? "#7a1d1d" : "#b53a2a";
-    const balloonDark = enemy ? "#4a0e0e" : "#7a1f12";
-    ctx.fillStyle = balloonColor;
-    ctx.strokeStyle = "#1a0a0a";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, -h * 0.7, w * 0.55, h * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // balloon ribbing
-    ctx.strokeStyle = balloonDark;
-    ctx.lineWidth = 2;
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath();
-      const rx = i * w * 0.18;
-      ctx.ellipse(rx, -h * 0.7, w * 0.05, h * 0.55, 0, 0, Math.PI * 2);
-      ctx.stroke();
+    if (enemy) {
+      drawEnemyShip(ctx, w, h, t);
+    } else {
+      drawPlayerShip(ctx, w, h, t);
     }
-    // fin tail
-    ctx.fillStyle = balloonDark;
-    ctx.beginPath();
-    ctx.moveTo(-w * 0.55, -h * 0.7);
-    ctx.lineTo(-w * 0.75, -h * 1.05);
-    ctx.lineTo(-w * 0.5, -h * 0.95);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "#1a0a0a"; ctx.lineWidth = 2; ctx.stroke();
-    // emblem
-    ctx.fillStyle = "#ffce4a";
-    ctx.beginPath();
-    ctx.arc(0, -h * 0.7, 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#1a0a0a"; ctx.stroke();
-    ctx.fillStyle = enemy ? "#7a1d1d" : "#b53a2a";
-    // simple flame emblem
-    ctx.beginPath();
-    ctx.moveTo(0, -h * 0.7 - 8);
-    ctx.quadraticCurveTo(6, -h * 0.7, 0, -h * 0.7 + 6);
-    ctx.quadraticCurveTo(-6, -h * 0.7, 0, -h * 0.7 - 8);
-    ctx.fill();
-
-    // Ropes
-    ctx.strokeStyle = "#2a1810"; ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-w * 0.4, -h * 0.3); ctx.lineTo(-w * 0.35, h * 0.05);
-    ctx.moveTo(w * 0.4, -h * 0.3); ctx.lineTo(w * 0.35, h * 0.05);
-    ctx.moveTo(-w * 0.15, -h * 0.2); ctx.lineTo(-w * 0.15, h * 0.05);
-    ctx.moveTo(w * 0.15, -h * 0.2); ctx.lineTo(w * 0.15, h * 0.05);
-    ctx.stroke();
-
-    // Hull (wooden gondola)
-    ctx.fillStyle = "#6e4a2a";
-    ctx.strokeStyle = "#2a1810"; ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-w * 0.45, h * 0.05);
-    ctx.lineTo(w * 0.45, h * 0.05);
-    ctx.lineTo(w * 0.55, h * 0.25);
-    ctx.lineTo(w * 0.35, h * 0.5);
-    ctx.lineTo(-w * 0.35, h * 0.5);
-    ctx.lineTo(-w * 0.55, h * 0.25);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    // planks
-    ctx.strokeStyle = "#4a2f1a"; ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-      ctx.beginPath();
-      ctx.moveTo(-w * 0.45, h * 0.05 + i * h * 0.11);
-      ctx.lineTo(w * 0.45, h * 0.05 + i * h * 0.11);
-      ctx.stroke();
-    }
-    // windows
-    ctx.fillStyle = "#ffd66b";
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath();
-      ctx.arc(i * w * 0.14, h * 0.22, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#2a1810"; ctx.lineWidth = 1.5; ctx.stroke();
-    }
-    // Cannon at front
-    ctx.fillStyle = "#2a2a2e";
-    ctx.strokeStyle = "#0a0a0a"; ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.rect(w * 0.4, h * 0.1, w * 0.18, h * 0.12);
-    ctx.fill(); ctx.stroke();
-    // propeller back
-    ctx.strokeStyle = "#1a0a0a"; ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-w * 0.55, h * 0.2);
-    ctx.lineTo(-w * 0.7, h * 0.2);
-    ctx.stroke();
-    const spin = (t * 20) % (Math.PI * 2);
-    ctx.save();
-    ctx.translate(-w * 0.7, h * 0.2);
-    ctx.rotate(spin);
-    ctx.fillStyle = "#3a2a1a";
-    ctx.fillRect(-2, -h * 0.18, 4, h * 0.36);
-    ctx.restore();
 
     ctx.restore();
 
@@ -646,6 +636,215 @@ export function AirshipGame() {
       ctx.fillRect(ship.pos.x - bw / 2, ship.pos.y - ship.height * 1.25, bw * (ship.hp / ship.maxHp), 6);
     }
   }
+
+  function drawPlayerShip(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+    // Warm orange balloon
+    ctx.fillStyle = "#d96a3a";
+    ctx.strokeStyle = "#1a0a0a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, -h * 0.7, w * 0.55, h * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#8a3018"; ctx.lineWidth = 2;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.ellipse(i * w * 0.18, -h * 0.7, w * 0.05, h * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // tail fin
+    ctx.fillStyle = "#8a3018";
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.55, -h * 0.7);
+    ctx.lineTo(-w * 0.75, -h * 1.05);
+    ctx.lineTo(-w * 0.5, -h * 0.95);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#1a0a0a"; ctx.lineWidth = 2; ctx.stroke();
+    // golden emblem (sun)
+    ctx.fillStyle = "#ffce4a";
+    ctx.beginPath(); ctx.arc(0, -h * 0.7, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#1a0a0a"; ctx.stroke();
+    ctx.fillStyle = "#fff2b0";
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 6, -h * 0.7 + Math.sin(a) * 6);
+      ctx.lineTo(Math.cos(a) * 10, -h * 0.7 + Math.sin(a) * 10);
+      ctx.lineWidth = 2; ctx.strokeStyle = "#fff2b0"; ctx.stroke();
+    }
+    // ropes
+    ctx.strokeStyle = "#2a1810"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.4, -h * 0.3); ctx.lineTo(-w * 0.35, h * 0.05);
+    ctx.moveTo(w * 0.4, -h * 0.3); ctx.lineTo(w * 0.35, h * 0.05);
+    ctx.moveTo(-w * 0.15, -h * 0.2); ctx.lineTo(-w * 0.15, h * 0.05);
+    ctx.moveTo(w * 0.15, -h * 0.2); ctx.lineTo(w * 0.15, h * 0.05);
+    ctx.stroke();
+    // wooden hull
+    ctx.fillStyle = "#6e4a2a";
+    ctx.strokeStyle = "#2a1810"; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.45, h * 0.05);
+    ctx.lineTo(w * 0.45, h * 0.05);
+    ctx.lineTo(w * 0.55, h * 0.25);
+    ctx.lineTo(w * 0.35, h * 0.5);
+    ctx.lineTo(-w * 0.35, h * 0.5);
+    ctx.lineTo(-w * 0.55, h * 0.25);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#4a2f1a"; ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.45, h * 0.05 + i * h * 0.11);
+      ctx.lineTo(w * 0.45, h * 0.05 + i * h * 0.11);
+      ctx.stroke();
+    }
+    // warm windows
+    ctx.fillStyle = "#ffd66b";
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.arc(i * w * 0.14, h * 0.22, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#2a1810"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    // cannon
+    ctx.fillStyle = "#2a2a2e"; ctx.strokeStyle = "#0a0a0a"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.rect(w * 0.4, h * 0.1, w * 0.18, h * 0.12); ctx.fill(); ctx.stroke();
+    // propeller
+    ctx.strokeStyle = "#1a0a0a"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-w * 0.55, h * 0.2); ctx.lineTo(-w * 0.7, h * 0.2); ctx.stroke();
+    const spin = (t * 20) % (Math.PI * 2);
+    ctx.save();
+    ctx.translate(-w * 0.7, h * 0.2); ctx.rotate(spin);
+    ctx.fillStyle = "#3a2a1a";
+    ctx.fillRect(-2, -h * 0.18, 4, h * 0.36);
+    ctx.restore();
+  }
+
+  function drawEnemyShip(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+    // Fire Nation iron warship — dark, angular, menacing.
+    // Elongated dark balloon with metallic plating
+    const grad = ctx.createLinearGradient(0, -h * 1.2, 0, -h * 0.2);
+    grad.addColorStop(0, "#3a1010");
+    grad.addColorStop(1, "#150505");
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    // angular zeppelin shape
+    ctx.moveTo(w * 0.6, -h * 0.7);
+    ctx.lineTo(w * 0.45, -h * 1.15);
+    ctx.lineTo(-w * 0.45, -h * 1.15);
+    ctx.lineTo(-w * 0.6, -h * 0.7);
+    ctx.lineTo(-w * 0.45, -h * 0.25);
+    ctx.lineTo(w * 0.45, -h * 0.25);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // metal plating seams
+    ctx.strokeStyle = "#5a1a1a"; ctx.lineWidth = 1.5;
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * w * 0.15, -h * 1.15);
+      ctx.lineTo(i * w * 0.15, -h * 0.25);
+      ctx.stroke();
+    }
+    // red trim stripe
+    ctx.fillStyle = "#c41818";
+    ctx.fillRect(-w * 0.55, -h * 0.55, w * 1.1, h * 0.08);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+    ctx.strokeRect(-w * 0.55, -h * 0.55, w * 1.1, h * 0.08);
+    // jagged top spikes
+    ctx.fillStyle = "#1a0505";
+    ctx.beginPath();
+    for (let i = -2; i <= 2; i++) {
+      const x = i * w * 0.18;
+      ctx.moveTo(x - w * 0.04, -h * 1.15);
+      ctx.lineTo(x, -h * 1.35);
+      ctx.lineTo(x + w * 0.04, -h * 1.15);
+    }
+    ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.stroke();
+    // tail spike fins (sharp triangles top and bottom)
+    ctx.fillStyle = "#2a0a0a";
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.6, -h * 0.7);
+    ctx.lineTo(-w * 0.9, -h * 1.0);
+    ctx.lineTo(-w * 0.85, -h * 0.55);
+    ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#000"; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.6, -h * 0.4);
+    ctx.lineTo(-w * 0.9, -h * 0.25);
+    ctx.lineTo(-w * 0.85, -h * 0.6);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // glowing red emblem (Fire Nation insignia)
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(0, -h * 0.7, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ff2a1a";
+    ctx.shadowColor = "#ff2a1a"; ctx.shadowBlur = 14;
+    // three-flame insignia
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 5, -h * 0.7 + 5);
+      ctx.quadraticCurveTo(i * 5 + 3, -h * 0.7 - 2, i * 5, -h * 0.7 - 7);
+      ctx.quadraticCurveTo(i * 5 - 3, -h * 0.7 - 2, i * 5, -h * 0.7 + 5);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    // chains instead of ropes
+    ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.4, -h * 0.25); ctx.lineTo(-w * 0.35, h * 0.05);
+    ctx.moveTo(w * 0.4, -h * 0.25); ctx.lineTo(w * 0.35, h * 0.05);
+    ctx.moveTo(0, -h * 0.25); ctx.lineTo(0, h * 0.05);
+    ctx.stroke();
+    // iron-clad gondola (darker, angular)
+    const hullGrad = ctx.createLinearGradient(0, h * 0.05, 0, h * 0.5);
+    hullGrad.addColorStop(0, "#2a2a2e");
+    hullGrad.addColorStop(1, "#0a0a0e");
+    ctx.fillStyle = hullGrad;
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.5, h * 0.05);
+    ctx.lineTo(w * 0.5, h * 0.05);
+    ctx.lineTo(w * 0.62, h * 0.25);
+    ctx.lineTo(w * 0.4, h * 0.55);
+    ctx.lineTo(-w * 0.4, h * 0.55);
+    ctx.lineTo(-w * 0.62, h * 0.25);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // hull bolts
+    ctx.fillStyle = "#5a5a5e";
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath(); ctx.arc(i * w * 0.13, h * 0.12, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(i * w * 0.13, h * 0.5, 2, 0, Math.PI * 2); ctx.fill();
+    }
+    // menacing red slit windows
+    ctx.fillStyle = "#ff2a1a";
+    ctx.shadowColor = "#ff2a1a"; ctx.shadowBlur = 8;
+    for (let i = -2; i <= 2; i++) {
+      ctx.fillRect(i * w * 0.14 - 6, h * 0.27, 12, 3);
+    }
+    ctx.shadowBlur = 0;
+    // big front cannon
+    ctx.fillStyle = "#1a1a1e"; ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.rect(w * 0.45, h * 0.08, w * 0.22, h * 0.16); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(w * 0.67, h * 0.16, h * 0.06, 0, Math.PI * 2); ctx.fill();
+    // rear engine glow
+    ctx.fillStyle = "#ff5a1a";
+    ctx.shadowColor = "#ff5a1a"; ctx.shadowBlur = 18;
+    const flicker = 0.7 + Math.sin(t * 30) * 0.3;
+    ctx.beginPath(); ctx.ellipse(-w * 0.62, h * 0.25, 8 * flicker, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // dark propeller
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-w * 0.6, h * 0.25); ctx.lineTo(-w * 0.75, h * 0.25); ctx.stroke();
+    const spin = (t * 25) % (Math.PI * 2);
+    ctx.save();
+    ctx.translate(-w * 0.75, h * 0.25); ctx.rotate(spin);
+    ctx.fillStyle = "#1a1a1e";
+    ctx.fillRect(-2, -h * 0.2, 4, h * 0.4);
+    ctx.restore();
+  }
+
 
   // Joystick handlers
   const joyRadius = 60;
